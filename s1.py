@@ -1,26 +1,21 @@
 import numpy as np
 import streamlit as st
-# import pickle
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder
-# from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-# from sklearn.metrics import accuracy_score
 from xgboost import XGBClassifier
 from sklearn.linear_model import LogisticRegression
 
-# st.title("ipl win predictor")
 st.set_page_config(
     page_title="IPL Win Predictor",
     page_icon="🏏",
     layout="centered"
 )
-# model =pickle.load(open('pipe2.pkl','rb'))
-# print("model uploaded")
+
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Inter:wght@300;400;500&display=swap');
@@ -233,153 +228,91 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-df=pd.read_csv('a.csv')
+df = pd.read_csv('a.csv')
+
+
 @st.cache_resource
 def train_model():
-    ipl =pd.read_csv('a.csv')
+    ipl = pd.read_csv('a.csv')
+    ipl.drop(columns=['Unnamed: 0'], inplace=True)
 
-    ipl.drop(columns=['Unnamed: 0'],inplace=True)
+    x = ipl.drop(columns=['result'])
+    y = ipl['result']
 
-    x =ipl.drop(columns=['result'])
-    y=ipl['result']
+    xtr, xte, ytr, yte = train_test_split(x, y, test_size=0.2, random_state=2)
 
-    xtr,xte,ytr,yte =train_test_split(x,y,test_size=0.2,random_state=2)
-
-    ohe =OneHotEncoder()
-
-    ohe.fit(x[['batting_team','bowling_team','venue']])
+    ohe = OneHotEncoder()
+    ohe.fit(x[['batting_team', 'bowling_team', 'venue']])
 
     trf = ColumnTransformer([
-        ('trf', OneHotEncoder(sparse_output=False, drop='first',categories=ohe.categories_), ['batting_team', 'bowling_team', 'venue'])
-        ,('trf2',StandardScaler(),['runs_left','balls_left','wickets_left','runs_target_y','crr','rrr'])
-    ]
-        , remainder='passthrough')
-
-    # trf2=ColumnTransformer(transformers=[('trf2',StandardScaler(),['runs_left','balls_left','wickets_left','runs_target_y','crr','rrr'])],remainder='passthrough')
+        ('trf', OneHotEncoder(sparse_output=False, drop='first', categories=ohe.categories_),
+         ['batting_team', 'bowling_team', 'venue']),
+        ('trf2', StandardScaler(), ['runs_left', 'balls_left', 'wickets_left', 'runs_target_y', 'crr', 'rrr'])
+    ], remainder='passthrough')
 
     pipe2 = Pipeline(steps=[
         ('step1', trf),
-
         ('step3', LogisticRegression(solver='liblinear'))
     ])
 
-    pipe2.fit(xtr,ytr)
-
-    print(pipe2.predict(xte),yte)
-
+    pipe2.fit(xtr, ytr)
     return pipe2
 
-pipe=train_model()
 
-####UI
+pipe = train_model()
 
-teams=df['batting_team'].unique()
+# ── UI ────────────────────────────────────────────────────────────────────────
+teams = df['batting_team'].unique()
+venue = df['venue'].unique()
 
-venue=df['venue'].unique()
-
-col1,col2 =st.columns(2)
-
+col1, col2 = st.columns(2)
 with col1:
-    batting_team=st.selectbox('select batting team',sorted(teams))
+    batting_team = st.selectbox('Select batting team', sorted(teams))
 with col2:
-    bowling_team=st.selectbox('select bowling team',sorted(teams))
+    bowling_team = st.selectbox('Select bowling team', sorted(teams))
 
+select_venue = st.selectbox('Select venue', sorted(venue))
+target = st.number_input('Target', 0, 300)
 
-
-select_venue =st.selectbox('select venue',sorted(venue))
-
-target = st.number_input('Target',0,300)
-
-col3,col4,col5 =st.columns(3)
-
+col3, col4, col5 = st.columns(3)
 with col3:
     score = st.number_input('Score')
 with col4:
-    overs = st.number_input('Overs completed',0,20)
+    overs = st.number_input('Overs completed', 0, 20)
 with col5:
     wickets = st.number_input('Wickets out')
-# if batting_team!=bowling_team :
-#
-#
-#     runs_left = target - score
-#     wickets_left = 10 - wickets
-#     balls_left = 120 - (overs * 6)
-#     crr = score / overs if overs > 0 else 0
-#     rrr = (runs_left * 6) / balls_left if balls_left > 0 else 0
-#
 
-
-
-if st.button('predict probability'):
-    if batting_team==bowling_team:
-        st.error("batting team and bowling team can not be equal")
-
+if st.button('Predict Probability'):
+    if batting_team == bowling_team:
+        st.error("Batting team and bowling team cannot be equal.")
+    elif target == 0:
+        st.error("Please enter a target.")
+    elif score > target:
+        st.error("Score cannot be greater than target.")
     else:
-        if target !=0:
+        runs_left = target - score
+        wickets_left = 10 - wickets
+        balls_left = 120 - (overs * 6)
+        crr = score / overs if overs > 0 else 0
+        rrr = (runs_left * 6) / balls_left if balls_left > 0 else 0
 
-            if score<= target:
-                
-                
-                runs_left = target - score
-                wickets_left = 10 - wickets
-                balls_left = 120 - (overs * 6)
-                crr = score / overs if overs > 0 else 0
-                rrr = (runs_left * 6) / balls_left if balls_left > 0 else 0
-                
+        inp = pd.DataFrame({
+            'batting_team': [batting_team],
+            'bowling_team': [bowling_team],
+            'venue': [select_venue],
+            'runs_left': [runs_left],
+            'wickets_left': [wickets_left],
+            'balls_left': [balls_left],
+            'runs_target_y': [target],
+            'crr': [crr],
+            'rrr': [rrr]
+        })
 
-                inp = pd.DataFrame({'batting_team': [batting_team],
-                                'bowling_team': [bowling_team],
-                                'venue': [select_venue],
-                                'runs_left': [runs_left],
-                                'wickets_left': [wickets_left],
-                                'balls_left': [balls_left],
-                                'runs_target_y': [target],
-                                'crr': [crr],
-                                'rrr': [rrr]
+        result = pipe.predict_proba(inp)
+        loss = result[0][0]
+        win = result[0][1]
 
-                                })
-
-                 result = pipe.predict_proba(inp)
-                
-                 loss = result[0][0]
-                 win = result[0][1]
-                 st.subheader(f"current run rate is {np.round(crr, 1)}")
-                
-                 st.subheader(f"required run rate is {np.round(rrr, 1)}")
-                
-
-                 st.header(batting_team + "- " + str(round(win * 100)) + "%")
-                 st.header(bowling_team + "- " + str(round(loss * 100)) + "%")
-
-        
-
-        
-
-        
-                
-
-            # st.header(f"current run rate is {crr}")
-            # st.header(f"required run rate is {rrr}")
-
-
-                  
-                
-                               
-
-          
-                
- 
-            
-         
-
-             
-            
-        else:
-            st.error("score can not be greater than target")
-
-        else:
-            st.error("please enter target")
-
-
-
-
+        st.subheader(f"Current run rate: {np.round(crr, 1)}")
+        st.subheader(f"Required run rate: {np.round(rrr, 1)}")
+        st.header(f"{batting_team} - {round(win * 100)}%")
+        st.header(f"{bowling_team} - {round(loss * 100)}%")
