@@ -317,13 +317,17 @@ if st.button('predict probability'):
     else:
         if target !=0:
 
-            runs_left = target - score
-            wickets_left = 10 - wickets
-            balls_left = 120 - (overs * 6)
-            crr = score / overs if overs > 0 else 0
-            rrr = (runs_left * 6) / balls_left if balls_left > 0 else 0
+            if score<= target:
+                
+                
+                runs_left = target - score
+                wickets_left = 10 - wickets
+                balls_left = 120 - (overs * 6)
+                crr = score / overs if overs > 0 else 0
+                rrr = (runs_left * 6) / balls_left if balls_left > 0 else 0
+                
 
-            inp = pd.DataFrame({'batting_team': [batting_team],
+                inp = pd.DataFrame({'batting_team': [batting_team],
                                 'bowling_team': [bowling_team],
                                 'venue': [select_venue],
                                 'runs_left': [runs_left],
@@ -335,18 +339,43 @@ if st.button('predict probability'):
 
                                 })
 
-            result = pipe.predict_proba(inp)
+                 result = pipe.predict_proba(inp)
+                
+                 loss = result[0][0]
+                 win = result[0][1]
+                 st.subheader(f"current run rate is {np.round(crr, 1)}")
+                
+                 st.subheader(f"required run rate is {np.round(rrr, 1)}")
+                
+
+                 st.header(batting_team + "- " + str(round(win * 100)) + "%")
+                 st.header(bowling_team + "- " + str(round(loss * 100)) + "%")
+
+        
+
+        
+
+        
+                
 
             # st.header(f"current run rate is {crr}")
             # st.header(f"required run rate is {rrr}")
 
-            loss = result[0][0]
-            win = result[0][1]
-            st.subheader(f"current run rate is {np.round(crr, 1)}")
-            st.subheader(f"required run rate is {np.round(rrr, 1)}")
 
-            st.header(batting_team + "- " + str(round(win * 100)) + "%")
-            st.header(bowling_team + "- " + str(round(loss * 100)) + "%")
+                  
+                
+                               
+
+          
+                
+ 
+            
+         
+
+             
+            
+        else:
+            st.error("score can not be greater than target")
 
         else:
             st.error("please enter target")
